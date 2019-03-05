@@ -1,0 +1,22 @@
+Package: SSGL
+Type: Package
+Title: Spike and Slab Group Lasso
+Version: 0.0.0.9000
+Date: 2019-02-20
+Author: Joseph Antonelli
+Maintainer: Joseph Antonelli <jantonelli111@gmail.com>
+Description: FILL
+License: GPL (>= 2)
+LazyData: TRUE
+URL: https://github.com/jantonelli111/SSGL
+BugReports: https://github.com/jantonelli111/SSGL/issues
+RoxygenNote: 6.1.1
+Suggests:
+    ggplot2,
+    knitr,
+    rmarkdown,
+    testthat
+VignetteBuilder: knitr
+Imports:
+    mvtnorm,
+    statmod
