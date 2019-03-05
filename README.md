@@ -15,7 +15,7 @@ library(SSGL)
 
 # How to use the software
 
-Here, we will simulate a simple example to show how the software works. First we will show how the function works for a chosen value of $\lambda_0$
+Here, we will simulate a simple example to show how the software works. First we will show how the function works for a chosen value of \lambda_0
 
 ```{r, eval=FALSE}
 n = 200
@@ -57,4 +57,6 @@ modSSGL$sigmasq
 modSSGL$theta
 ```
 ![Alt text](images/theta.png)
+
+So we see that our model has correctly identified the first two covariates (represented in this example by first 4 covariates) as nonzero, while zeroing out the remaining coefficients. This example relied on a well-chosen value of 
 
