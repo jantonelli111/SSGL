@@ -160,7 +160,7 @@ SSGL = function(Y, X, lambda1, lambda0, groups,
     ## Check to make sure algorithm doesn't explode for values of lambda0 too small
     tempSigSq = sum((Y - X %*% beta - intercept)^2) / (n + 2)
     if (tempSigSq < .00001*var(Y) | tempSigSq > 10000*var(Y)) {
-      print("Algorithm diverging. Increase lambda0")
+      print(paste("Lambda0 = ", lambda0, " and algorithm is diverging. Increase lambda0")
       sigmasq = var(Y)
       beta = rep(0, dim(X)[2])
       updateSigma = FALSE
@@ -237,7 +237,7 @@ SSGL = function(Y, X, lambda1, lambda0, groups,
 #' nFolds = 5)
 #' 
 #' modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=modSSGLcv$lambda0, 
-#'                groups = rep(1:G, each=mg))
+#'                groups = rep(1:G, each=2))
 #' 
 #' modSSGL
 
