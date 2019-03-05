@@ -45,7 +45,7 @@
 #' 
 #' ## Now fit model for chosen lambda0 and lambda1 values
 #' modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=10, 
-#' groups = rep(1:G, each=mg))
+#' groups = rep(1:G, each=2))
 #' 
 #' modSSGL
 
@@ -233,7 +233,7 @@ SSGL = function(Y, X, lambda1, lambda0, groups,
 #' ## Now find the best lambda0 using cross-validation
 #' modSSGLcv = SSGLcv(Y=Y, X=X, lambda1=.1, 
 #' lambda0seq = seq(4,20, by=2),
-#' groups = rep(1:G, each=mg),
+#' groups = rep(1:G, each=2),
 #' nFolds = 5)
 #' 
 #' modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=modSSGLcv$lambda0, 
