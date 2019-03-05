@@ -44,7 +44,17 @@ This will contain a list with estimates of the intercept, regression coefficient
 ## The first twenty regression coefficients
 modSSGL$beta[1:20]
 ```
-
 ![Alt text](images/beta.png)
+
+```{r, eval=FALSE}
+## Estimate of the residual variance
+modSSGL$sigmasq
+```
 ![Alt text](images/sigmasq.png)
+
+```{r, eval=FALSE}
+## Estimate of theta
+modSSGL$theta
+```
 ![Alt text](images/theta.png)
+
