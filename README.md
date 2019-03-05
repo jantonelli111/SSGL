@@ -17,7 +17,7 @@ library(SSGL)
 
 Here, we will simulate a simple example to show how the software works. First we will show how the function works for a chosen value of $\lambda_0$
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 n = 200
 G = 100
 x = mvtnorm::rmvnorm(n, sigma=diag(G))
@@ -34,8 +34,7 @@ Y = 200 + x[,1] + x[,2] + 0.6*x[,2]^2 + rnorm(n, sd=1)
 
 ## Now fit model for chosen lambda0 and lambda1 values
 modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=10, 
-groups = rep(1:G, each=mg))
+groups = rep(1:G, each=2))
 
 modSSGL
-
 ```
