@@ -6,7 +6,7 @@
 \usage{
 SSGLcv(Y, X, lambda1, lambda0seq = seq(20, 50, by = 1), groups, a = 1,
   b = length(unique(groups)), nFolds = 5, updateSigma = TRUE,
-  M = 10, error = 0.001)
+  M = 10, error = 0.001, forceGroups = c())
 }
 \arguments{
 \item{Y}{The outcome to be analyzed}
@@ -28,6 +28,9 @@ SSGLcv(Y, X, lambda1, lambda0seq = seq(20, 50, by = 1), groups, a = 1,
 \item{M}{Positive number less than p indicating how often to update theta and sigma. There is no
 need to change this unless trying to optimize computation time}
 
+\item{forceGroups}{A vector containing the indices of any groups you wish to automatically
+include in the model and not penalize}
+
 \item{UpdateSigma}{True or False indicating whether to estimate the residual variance}
 }
 \value{
@@ -40,10 +43,9 @@ to find the best lambda0 value.
 }
 \examples{
 
-## Here we generate 200 samples from 20 covariates. We restrict to only 20
-covariates for speed, but this works for much larger covariate dimensions
+## Here we generate 200 samples from 100 covariates
 n = 200
-G = 200
+G = 100
 x = mvtnorm::rmvnorm(n, sigma=diag(G))
 
 
@@ -58,9 +60,12 @@ Y = x[,1] + x[,2] + 0.6*x[,2]^2 + rnorm(n, sd=1)
 
 ## Now find the best lambda0 using cross-validation
 modSSGLcv = SSGLcv(Y=Y, X=X, lambda1=.1, 
-lambda0seq = seq(1,20, by=1),
-groups = rep(1:G, each=mg),
+lambda0seq = seq(4,20, by=2),
+groups = rep(1:G, each=2),
 nFolds = 5)
 
-modSSGLcv
+modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=modSSGLcv$lambda0, 
+               groups = rep(1:G, each=mg))
+
+modSSGL
 }

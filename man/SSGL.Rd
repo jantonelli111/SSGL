@@ -6,7 +6,7 @@
 \usage{
 SSGL(Y, X, lambda1, lambda0, groups, a = 1, b = length(unique(groups)),
   updateSigma = TRUE, M = 10, error = 0.001, betaStart = rep(0,
-  dim(X)[2]), sigmasqStart = var(Y))
+  dim(X)[2]), sigmasqStart = as.numeric(var(Y)), forceGroups = c())
 }
 \arguments{
 \item{Y}{The outcome to be analyzed}
@@ -27,6 +27,9 @@ SSGL(Y, X, lambda1, lambda0, groups, a = 1, b = length(unique(groups)),
 need to change this unless trying to optimize computation time}
 
 \item{betaStart}{Starting values for beta vector. There is no need to change this unless for some specific reason}
+
+\item{forceGroups}{A vector containing the indices of any groups you wish to automatically
+include in the model and not penalize}
 
 \item{UpdateSigma}{True or False indicating whether to estimate the residual variance}
 
@@ -61,7 +64,7 @@ Y = 200 + x[,1] + x[,2] + 0.6*x[,2]^2 + rnorm(n, sd=1)
 
 ## Now fit model for chosen lambda0 and lambda1 values
 modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=10, 
-groups = rep(1:G, each=mg))
+groups = rep(1:G, each=2))
 
 modSSGL
 }

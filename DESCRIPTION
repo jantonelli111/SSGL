@@ -18,5 +18,4 @@ Suggests:
     testthat
 VignetteBuilder: knitr
 Imports:
-    mvtnorm,
     statmod
