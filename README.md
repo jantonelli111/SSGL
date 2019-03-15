@@ -132,13 +132,27 @@ modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=modSSGLcv$lambda0,
                groups = rep(1:G, each=mg))
 ```
 
-And finally, we can plot the effect of exposure 1 on the outcome. 
+And finally, we can plot the effect of exposure 1 and exposure 3 on the outcome. 
 
 ```{r, eval=FALSE}
+par(mfrow=c(1,2), pty='s')
 ## Plot the effect of exposure 1 on the outcome
 ord = order(x[,1])
-plot(x[ord,1], X[ord,1:2] %*% modSSGL$beta[1:2], type='l', lwd=3,
+Curve = X[ord,1:2] %*% modSSGL$beta[1:2]
+Truth = 5*sin(pi*x[ord,1])
+plot(x[ord,1], Curve + mean(Truth) - mean(Curve), type='l', lwd=3,
      xlab="Covariate 1", ylab="f(X1)")
+lines(x[ord,1], Truth, col=2, lwd=3)
+legend("bottom", c("SSGL", "Truth"), lwd=3, lty=1, col=1:2)
+
+## Plot the effect of exposure 3 on the outcome
+ord = order(x[,3])
+Curve = X[ord,5:6] %*% modSSGL$beta[5:6]
+Truth = 2.5*(x[ord,3]^2 - 0.5)
+plot(x[ord,3], Curve + mean(Truth) - mean(Curve), type='l', lwd=3,
+     xlab="Covariate 3", ylab="f(X3)")
+lines(x[ord,3], Truth, col=2, lwd=3)
+legend("topleft", c("SSGL", "Truth"), lwd=3, lty=1, col=1:2)
 ```
 
 ![Alt text](images/Exposure1.png)
