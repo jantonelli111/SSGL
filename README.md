@@ -78,3 +78,7 @@ modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=modSSGLcv$lambda0,
                groups = rep(1:G, each=2))
 ```
 
+# Use in sparse generalized additive models (GAMs)
+
+Now we will show how the SSGL procedure can be used to model sparse additive generalized models. We will use roughly the same functions as seen in the manuscript of the paper. 
+
