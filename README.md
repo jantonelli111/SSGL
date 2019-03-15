@@ -159,6 +159,113 @@ legend("topleft", c("SSGL", "Truth"), lwd=3, lty=1, col=1:2)
 
 # Use in nonlinear interaction models
 
-Here we will show how the SSGL procedure can be used to identify nonlinear interactions among a high-dimensional set of possible interactions. 
+Here we will show how the SSGL procedure can be used to identify nonlinear interactions among a high-dimensional set of possible interactions. First we need to generate some data that includes interaction terms:
+
+```{r, eval=FALSE}
+TrueF = function(x) {
+  return(2.5*(sin(pi*x[,1]*x[,2])) + 2*(cos(pi*(x[,3] + x[,5]))) +
+           2*(x[,6] - 0.5) + 2.5*x[,7])
+}
+
+n = 300
+G = 10
+
+## generate data
+x = matrix(runif(G*n), nrow=n)
+Y = TrueF(x) + rnorm(n, sd=1)
+```
+
+And now we need to construct both main effect and interaction design matrices using nonlinear functions from natural splines. First we can start with the main effects:
+
+```{r, eval=FALSE}
+## Run our approach for 2 degrees of freedom
+
+mg = 2
+
+X = matrix(NA, nrow=n, ncol=(G*mg) + choose(G,2)*(mg^2))
+
+## create main effect component of design matrix
+for (g in 1 : G) {
+  splineTemp = ns(x[,g], df=mg)
+  X[,mg*(g-1) + 1] = splineTemp[,1]
+  for (m in 2 : mg) {
+    tempY = splineTemp[,m]
+    tempX = X[,(mg*(g-1) + 1):(mg*(g-1) + m - 1)]
+    modX = lm(tempY ~ tempX)
+    X[,mg*(g-1) + m] = modX$residuals
+  }
+}
+```
+And now we can move to interaction terms. Note that we are constructing the interaction terms to be orthogonal to the main effect terms so that they only capture information that is orthogonal to the main effects. 
+
+```{r, eval=FALSE}
+## create interaction component of design matrix
+## ensuring that interaction terms are independent
+## of their corresponding main effects
+counter = 1
+for (g1 in 2 : G) {
+  for (g2 in 1 : (g1 - 1)) {
+    splineTemp1 = ns(x[,g1], df=mg)
+    splineTemp2 = ns(x[,g2], df=mg)
+    
+    designX = matrix(NA, n, mg^2)
+    counter2 = 1
+    for (m1 in 1 : mg) {
+      for (m2 in 1 : mg) {
+        tempY = splineTemp1[,m1]*splineTemp2[,m2]
+        tempMod = lm(tempY ~ splineTemp1 + splineTemp2)
+        designX[,counter2] = tempMod$residuals
+        counter2 = counter2 + 1
+      }
+    }
+    
+    X[,((G*mg) + (counter-1)*(mg^2) + 1) : ((G*mg) + counter*(mg^2))] = designX
+    counter = counter + 1
+  }
+} 
+
+groups = c(rep(1:G, each=mg), rep(G + 1:(choose(G,2)), each=mg^2))
+```
+
+Now we can run our model using cross validation to find lambda0.
+
+```{r, eval=FALSE}
+lambda0seq = seq(3, 25, by=2)
+
+## Cross validation
+modSSGLcv = SSGLcv(Y=Y, X=X, lambda1=.1, 
+                   lambda0seq = lambda0seq,
+                   groups = groups,
+                   a = 1, b = G, nFolds = 10,
+                   updateSigma = TRUE,
+                   M = 10, error = 0.0001)
+
+## Final model
+modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=modSSGLcv$lambda0, 
+               groups = groups,
+               a = 1, b = G,
+               updateSigma = TRUE,
+               M = 10, error = 0.0001)
+```
+
+And now we can look at which interaction terms are important
+
+```{r, eval=FALSE}
+## Find which interaction terms are important
+interactionSave = matrix(NA, G, G)
+
+counter = 1
+for (g1 in 2 : G) {
+  for (g2 in 1 : (g1 - 1)) {
+    interactionSave[g1,g2] = 1*(modSSGL$beta[((G*mg) + (counter-1)*(mg^2) + 1)] != 0)
+    counter = counter + 1
+  }
+}
+
+interactionSave
+
+```
 
 ![Alt text](images/Interactions.png)
+
+We see that there is an interaction term between covariate 1 and 2, as well as between covariate 3 and 5.
