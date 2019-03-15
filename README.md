@@ -132,3 +132,5 @@ ord = order(x[,1])
 plot(x[ord,1], X[ord,1:2] %*% modSSGL$beta[1:2], type='l', lwd=3,
      xlab="Covariate 1", ylab="f(X1)")
 ```
+
+![Alt text](images/Exposure1.png)
