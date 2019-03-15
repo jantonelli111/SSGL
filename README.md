@@ -156,3 +156,9 @@ legend("topleft", c("SSGL", "Truth"), lwd=3, lty=1, col=1:2)
 ```
 
 ![Alt text](images/Exposure1.png)
+
+# Use in nonlinear interaction models
+
+Here we will show how the SSGL procedure can be used to identify nonlinear interactions among a high-dimensional set of possible interactions. 
+
+![Alt text](images/Interactions.png)
