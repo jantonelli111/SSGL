@@ -80,7 +80,7 @@ modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=modSSGLcv$lambda0,
 
 # Use in sparse generalized additive models (GAMs)
 
-Now we will show how the SSGL procedure can be used to model sparse additive generalized models. We will use roughly the same functions as seen in the manuscript of the paper. We will model the effect of each covariate using 2 degree of freedom splines. First, we simulate
+Now we will show how the SSGL procedure can be used to model sparse additive generalized models. We will use roughly the same functions as seen in the manuscript of the paper. We will model the effect of each covariate using 2 degree of freedom splines. First, we simulate G covariates, and then we create new design matrices using natural splines.
 
 ```{r, eval=FALSE}
 library(splines)
@@ -91,7 +91,7 @@ TrueF = function(x) {
 }
 
 n = 200
-G = 15
+G = 100
 
 ## Generating training data
 x = matrix(runif(G*n), nrow=n)
@@ -114,7 +114,11 @@ for (g in 1 : G) {
     X[,mg*(g-1) + m] = modX$residuals
   }
 }
+```
 
+And now we can build our SSGL model, first using cross-validation to find the appropriate tuning parameter value.
+
+```{r, eval=FALSE}
 lambda0seq = seq(3, 25, by=2)
 
 ## Cross validation
@@ -126,7 +130,11 @@ modSSGLcv = SSGLcv(Y=Y, X=X, lambda1=.1,
 ## Final model
 modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=modSSGLcv$lambda0, 
                groups = rep(1:G, each=mg))
+```
 
+And finally, we can plot the effect of exposure 1 on the outcome. 
+
+```{r, eval=FALSE}
 ## Plot the effect of exposure 1 on the outcome
 ord = order(x[,1])
 plot(x[ord,1], X[ord,1:2] %*% modSSGL$beta[1:2], type='l', lwd=3,
