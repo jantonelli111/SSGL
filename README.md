@@ -1,9 +1,9 @@
 # SSGL
 R package implementing the spike and slab group lasso
 
-This is an R package to implement methods seen in "Spike-and-Slab Group Lassos for Grouped Regression and Sparse Generalized Additive Models" by Ray Bai, Gemma Morna, Joseph Antonelli, Yong Chen and Mary Boland, which can be found at the following link:
+This is an R package to implement methods seen in "Spike-and-Slab Group Lassos for Grouped Regression and Sparse Generalized Additive Models" by Ray Bai, Gemma Moran, Joseph Antonelli, Yong Chen and Mary Boland, which can be found at the following link:
 
-https://www.researchgate.net/publication/331463509_Spike-and-Slab_Group_Lassos_for_Grouped_Regression_and_Sparse_Generalized_Additive_Models
+https://arxiv.org/pdf/1903.01979.pdf
 
 To download the R package use the following in R:
 
@@ -78,3 +78,57 @@ modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=modSSGLcv$lambda0,
                groups = rep(1:G, each=2))
 ```
 
+# Use in sparse generalized additive models (GAMs)
+
+Now we will show how the SSGL procedure can be used to model sparse additive generalized models. We will use roughly the same functions as seen in the manuscript of the paper. We will model the effect of each covariate using 2 degree of freedom splines. First, we simulate
+
+```{r, eval=FALSE}
+library(splines)
+
+TrueF = function(x) {
+  return(5*sin(pi*x[,1]) + 
+           2.5*(x[,3]^2 - 0.5) + 1*exp(x[,4]) + 3*x[,5])
+}
+
+n = 200
+G = 15
+
+## Generating training data
+x = matrix(runif(G*n), nrow=n)
+Y = TrueF(x) + rnorm(n, sd=1)
+
+## degrees of freedom of the splines
+mg = 2
+
+X = matrix(NA, nrow=n, ncol=G*mg)
+
+## create design matrix with 2 degree of freedom splines
+## ensuring that the variables within each group are orthogonal
+for (g in 1 : G) {
+  splineTemp = ns(x[,g], df=mg)
+  X[,mg*(g-1) + 1] = splineTemp[,1]
+  for (m in 2 : mg) {
+    tempY = splineTemp[,m]
+    tempX = X[,(mg*(g-1) + 1):(mg*(g-1) + m - 1)]
+    modX = lm(tempY ~ tempX)
+    X[,mg*(g-1) + m] = modX$residuals
+  }
+}
+
+lambda0seq = seq(3, 25, by=2)
+
+## Cross validation
+modSSGLcv = SSGLcv(Y=Y, X=X, lambda1=.1, 
+                   lambda0seq = lambda0seq,
+                   groups = rep(1:G, each=mg),
+                   nFolds = 25)
+
+## Final model
+modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=modSSGLcv$lambda0, 
+               groups = rep(1:G, each=mg))
+
+## Plot the effect of exposure 1 on the outcome
+ord = order(x[,1])
+plot(x[ord,1], X[ord,1:2] %*% modSSGL$beta[1:2], type='l', lwd=3,
+     xlab="Covariate 1", ylab="f(X1)")
+```
