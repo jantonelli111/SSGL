@@ -367,19 +367,19 @@ SSGLcv = function(Y, X, lambda1, lambda0seq = seq(1, 25, by=1),
 #' xnew = mvtnorm::rmvnorm(n2, sigma=diag(G))
 #' Ynew = 200 + xnew[,1] + xnew[,2] + 0.6*xnew[,2]^2 + rnorm(n2, sd=1)
 #' 
-#' modSSGLnpr = SSGLnpr(Y=Y, x=x, xnew = xnew, lambda1=.1, DF=2)
+#' modSSGLspr = SSGLspr(Y=Y, x=x, xnew = xnew, lambda1=.1, DF=2)
 
-#' mean((modSSGLnpr$predY - Y)^2)
-#' mean((modSSGLnpr$predYnew - Ynew)^2)
-#' modSSGLnpr$nonzero
+#' mean((modSSGLspr$predY - Y)^2)
+#' mean((modSSGLspr$predYnew - Ynew)^2)
+#' modSSGLspr$nonzero
 #' 
-#' plot(xnew[,2], modSSGLnpr$fxnew[,2])
+#' plot(xnew[,2], modSSGLspr$fxnew[,2])
 #' points(xnew[,2], xnew[,2] + 0.6*xnew[,2]^2 - 
 #'          mean(xnew[,2] + 0.6*xnew[,2]^2), col=2)
 #' legend("top", c("Estimated", "Truth"),col=1:2, pch=1)
 
 
-SSGLnpr = function(Y, x, xnew = NULL, DF=2, lambda1 = 0.1, 
+SSGLspr = function(Y, x, xnew = NULL, DF=2, lambda1 = 0.1, 
                    lambda0seq = seq(1, 25, by=1), 
                    a = 1, b = dim(x)[2],
                    nFolds = 5, updateSigma = TRUE,
