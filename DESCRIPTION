@@ -18,4 +18,5 @@ Suggests:
     testthat
 VignetteBuilder: knitr
 Imports:
-    statmod
+    statmod,
+    splines

@@ -2,3 +2,5 @@
 
 export(SSGL)
 export(SSGLcv)
+export(SSGLint)
+export(SSGLnpr)

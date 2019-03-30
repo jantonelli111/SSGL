@@ -4,7 +4,7 @@
 \alias{SSGLcv}
 \title{Find optimal lambda0 value using cross validation}
 \usage{
-SSGLcv(Y, X, lambda1, lambda0seq = seq(20, 50, by = 1), groups, a = 1,
+SSGLcv(Y, X, lambda1, lambda0seq = seq(1, 25, by = 1), groups, a = 1,
   b = length(unique(groups)), nFolds = 5, updateSigma = TRUE,
   M = 10, error = 0.001, forceGroups = c())
 }
@@ -65,7 +65,7 @@ groups = rep(1:G, each=2),
 nFolds = 5)
 
 modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=modSSGLcv$lambda0, 
-               groups = rep(1:G, each=mg))
+               groups = rep(1:G, each=2))
 
 modSSGL
 }
