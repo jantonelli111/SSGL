@@ -100,43 +100,16 @@ TrueF = function(x) {
 n = 200
 G = 100
 
-## Generating training data
 x = matrix(runif(G*n), nrow=n)
+xnew = matrix(runif(G*n2), nrow=n2)
 Y = TrueF(x) + rnorm(n, sd=1)
-
-## degrees of freedom of the splines
-mg = 2
-
-X = matrix(NA, nrow=n, ncol=G*mg)
-
-## create design matrix with 2 degree of freedom splines
-## ensuring that the variables within each group are orthogonal
-for (g in 1 : G) {
-  splineTemp = ns(x[,g], df=mg)
-  X[,mg*(g-1) + 1] = splineTemp[,1]
-  for (m in 2 : mg) {
-    tempY = splineTemp[,m]
-    tempX = X[,(mg*(g-1) + 1):(mg*(g-1) + m - 1)]
-    modX = lm(tempY ~ tempX)
-    X[,mg*(g-1) + m] = modX$residuals
-  }
-}
+Ynew = TrueF(xnew) + rnorm(n2, sd=1)
 ```
 
-And now we can build our SSGL model, first using cross-validation to find the appropriate tuning parameter value.
+And now we can build our SSGL model. Note that the modSSGLspr function already implements cross-validation, so nothing further is required.
 
 ```{r, eval=FALSE}
-lambda0seq = seq(3, 25, by=2)
-
-## Cross validation
-modSSGLcv = SSGLcv(Y=Y, X=X, lambda1=.1, 
-                   lambda0seq = lambda0seq,
-                   groups = rep(1:G, each=mg),
-                   nFolds = 25)
-
-## Final model
-modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=modSSGLcv$lambda0, 
-               groups = rep(1:G, each=mg))
+modSSGLspr = SSGLspr(Y=Y, x=x, xnew = xnew, lambda1=.1, DF=2)
 ```
 
 And finally, we can plot the effect of exposure 1 and exposure 3 on the outcome. 
@@ -145,7 +118,7 @@ And finally, we can plot the effect of exposure 1 and exposure 3 on the outcome.
 par(mfrow=c(1,2), pty='s')
 ## Plot the effect of exposure 1 on the outcome
 ord = order(x[,1])
-Curve = X[ord,1:2] %*% modSSGL$beta[1:2]
+Curve = modSSGLspr$fx[ord,1]
 Truth = 5*sin(pi*x[ord,1])
 plot(x[ord,1], Curve + mean(Truth) - mean(Curve), type='l', lwd=3,
      xlab="Covariate 1", ylab="f(X1)")
@@ -154,7 +127,7 @@ legend("bottom", c("SSGL", "Truth"), lwd=3, lty=1, col=1:2)
 
 ## Plot the effect of exposure 3 on the outcome
 ord = order(x[,3])
-Curve = X[ord,5:6] %*% modSSGL$beta[5:6]
+Curve = modSSGLspr$fx[ord,3]
 Truth = 2.5*(x[ord,3]^2 - 0.5)
 plot(x[ord,3], Curve + mean(Truth) - mean(Curve), type='l', lwd=3,
      xlab="Covariate 3", ylab="f(X3)")
