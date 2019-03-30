@@ -16,10 +16,11 @@ library(SSGL)
 There are four main functions in the package, which we will show how to use below. These functions and their corresponding purposes are as follows:
 
 SSGL - The standard function for using the spike and slab group lasso   
-SSGLcv - The function used to find the value of lambda0 to use
-SSGLspr - A function to use spike and slab group lasso for semiparametric regression using sparse additive linear models
+SSGLcv - The function used to find the value of lambda0 to use  
+SSGLspr - A function to use spike and slab group lasso for semiparametric regression using sparse additive linear models  
+SSGLint - A function to use spike and slab group lasso for nonlinear interaction detection  
 
-# How to use the software
+# Using the SSGL and SSGLcv functions
 
 Here, we will simulate a simple example to show how the software works. First we will show how the function works for a chosen value of lambda0
 
