@@ -6,7 +6,8 @@
 \usage{
 SSGL(Y, X, lambda1, lambda0, groups, a = 1, b = length(unique(groups)),
   updateSigma = TRUE, M = 10, error = 0.001, betaStart = rep(0,
-  dim(X)[2]), sigmasqStart, theta, forceGroups = c())
+  dim(X)[2]), sigmasqStart, theta, printWarnings = TRUE,
+  forceGroups = c())
 }
 \arguments{
 \item{Y}{The outcome to be analyzed}
@@ -29,7 +30,9 @@ need to change this unless trying to optimize computation time}
 \item{betaStart}{Starting values for beta vector. There is no need to change this unless for some specific reason}
 
 \item{theta}{Value of the sparsity parameter theta. There is no need to select a value for this parameter unless the 
-sparsity is known a priori. If left blank, the function will update theta automatically.}
+sparsity is known a priori. If left blank, the function will update theta automatically}
+
+\item{printWarnings}{Print warning messages about whether the optimization has converged}
 
 \item{forceGroups}{A vector containing the indices of any groups you wish to automatically
 include in the model and not penalize}

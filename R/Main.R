@@ -58,8 +58,11 @@ SSGLpath = function(Y, X, lambda1, lambda0,
   ## Final model
   betaStart = rep(0, dim(X)[2])
   updateSigma=FALSE
+  printWarnings = FALSE
   for (nl in 1 : length(lambda0seq)) {
     lambda0 = lambda0seq[nl]
+    
+    if (nl == length(lambda0seq)) printWarnings = TRUE
     
     # starting values for lambda0 = lambda1
     if ( nl == 1) {
@@ -69,7 +72,8 @@ SSGLpath = function(Y, X, lambda1, lambda0,
                      updateSigma = updateSigma,
                      M = 10, error = 0.001,
                      betaStart = betaStart,
-                     theta = 0.5
+                     theta = 0.5,
+                     printWarnings = printWarnings
       )
       
     } else {
@@ -79,7 +83,8 @@ SSGLpath = function(Y, X, lambda1, lambda0,
                      updateSigma = updateSigma,
                      M = 10, error = 0.001,
                      betaStart = betaStart,
-                     sigmasqStart = sigmasqStart)
+                     sigmasqStart = sigmasqStart,
+                     printWarnings = printWarnings)
       
     }
     
@@ -119,7 +124,8 @@ SSGLpath = function(Y, X, lambda1, lambda0,
 #' @param betaStart      Starting values for beta vector. There is no need to change this unless for some specific reason
 #' @param sigmaStart     Starting value for sigma. There is no need to change this unless for some specific reason
 #' @param theta          Value of the sparsity parameter theta. There is no need to select a value for this parameter unless the 
-#'                       sparsity is known a priori. If left blank, the function will update theta automatically. 
+#'                       sparsity is known a priori. If left blank, the function will update theta automatically 
+#' @param printWarnings  Print warning messages about whether the optimization has converged
 #' @param forceGroups    A vector containing the indices of any groups you wish to automatically
 #'                       include in the model and not penalize
 #'
@@ -162,6 +168,7 @@ SSGL = function(Y, X, lambda1, lambda0, groups,
                 betaStart = rep(0, dim(X)[2]),
                 sigmasqStart,
                 theta,
+                printWarnings = TRUE,
                 forceGroups = c()) {
   
   ## Number of groups and covariates overall
@@ -340,8 +347,9 @@ SSGL = function(Y, X, lambda1, lambda0, groups,
     }
     
     if (updateSigma==FALSE & (tempSigSq < min_sigma2 | tempSigSq > 100*var(Y))) {
-      print("Algorithm diverging. Increase lambda0")
-      print(paste("lambda0 =", lambda0))
+      if (printWarnings == TRUE) {
+        print(paste("lambda0 = ", lambda0, ",", " Algorithm diverging. Increase lambda0 or lambda0seq", sep=""))
+      }
       sigmasq = sigmasqStart
       betaStart = rep(0, dim(Xtilde)[2])
       converged = FALSE
@@ -357,7 +365,9 @@ SSGL = function(Y, X, lambda1, lambda0, groups,
     }
     
     if (sum(beta != 0) >= min(n, p)) {
-      print("Beta is saturated. Increase lambda0")
+      if (printWarnings == TRUE) {
+        print("Beta is saturated. Increase lambda0 or lambda0seq")
+      }
       sigmasq = sigmasqStart
       betaStart = rep(0, dim(Xtilde)[2])
       converged = F
@@ -501,9 +511,10 @@ SSGLcv = function(Y, X, lambda1, lambda0seq = seq(1, 100, by=1),
     sigmasqStart = var(Ytrain)
     betaStart = rep(0, dim(X)[2])
     updateSigma=FALSE
-    
+    printWarnings = FALSE
     ## Loop through the different lambda0 values
     for (nl in 1 : NL) {
+      if (nl == NL) printWarnings = TRUE
       lambda0 = lambda0seq[nl]
       
       # starting values for lambda0 = lambda1
@@ -514,6 +525,7 @@ SSGLcv = function(Y, X, lambda1, lambda0seq = seq(1, 100, by=1),
                        updateSigma = updateSigma,
                        M = 10, error = 0.001,
                        betaStart = betaStart,
+                       printWarnings = printWarnings,
                        theta = 0.5)
         
       } else {
@@ -523,6 +535,7 @@ SSGLcv = function(Y, X, lambda1, lambda0seq = seq(1, 100, by=1),
                        updateSigma = updateSigma,
                        M = 10, error = 0.001,
                        betaStart = betaStart,
+                       printWarnings = printWarnings,
                        sigmasqStart = sigmasqStart)
         
       }
