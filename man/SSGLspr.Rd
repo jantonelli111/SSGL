@@ -4,10 +4,9 @@
 \alias{SSGLspr}
 \title{Do sparse additive regression with splines using spike and slab group lasso}
 \usage{
-SSGLspr(Y, x, xnew = NULL, DF = 2, lambda1 = 0.1,
-  lambda0seq = seq(1, 25, by = 1), a = 1, b = dim(x)[2],
-  nFolds = 5, updateSigma = TRUE, M = 10, error = 0.001,
-  forceGroups = c())
+SSGLspr(Y, x, xnew = NULL, DF = 2, lambda1 = 1, lambda0seq = seq(1,
+  100, by = 1), a = 1, b = dim(x)[2], nFolds = 10,
+  updateSigma = TRUE, M = 10, error = 0.001, forceGroups = c())
 }
 \arguments{
 \item{Y}{The outcome to be analyzed}

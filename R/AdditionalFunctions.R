@@ -2,7 +2,9 @@
 psi = function(beta, lambda) {
   m = length(beta)
   C = 2^(-m) * pi^(-(m-1)/2) / (gamma((m+1)/2))
-  dens = C * lambda^m * exp(-lambda*sum(beta^2))
+  logDens = log(C) + m*log(lambda) - lambda*sqrt(sum(beta^2))
+  #dens = C * lambda^m * exp(-lambda*sqrt(sum(beta^2)))
+  dens = exp(logDens)
   
   return(dens)
 }
@@ -33,13 +35,14 @@ lambdaStar = function(beta, lambda1, lambda0, theta) {
 }
 
 ## g function
-gFunc = function(beta, lambda1, lambda0, theta, sigmasq) {
+gFunc = function(beta, lambda1, lambda0, theta, sigmasq, n) {
   l = lambdaStar(beta = beta, lambda1 = lambda1,
                  lambda0 = lambda0, theta = theta)
   p = pStar(beta = beta, lambda1 = lambda1,
             lambda0 = lambda0, theta = theta)
   
-  g = (l - lambda1)^2 + (2/sigmasq)*log(p)
+  g = (l - lambda1)^2 + (2*n/sigmasq)*log(p)
   return(g)
 }
+
 

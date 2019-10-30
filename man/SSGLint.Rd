@@ -4,9 +4,9 @@
 \alias{SSGLint}
 \title{Fit nonlinear, 2-way interaction models with spike and slab group lasso}
 \usage{
-SSGLint(Y, x, xnew = NULL, DFmain = 2, DFint = 2, lambda1 = 0.1,
-  lambda0seq = seq(1, 25, by = 1), a = 1, b = dim(x)[2],
-  nFolds = 5, updateSigma = TRUE, M = 10, error = 0.001,
+SSGLint(Y, x, xnew = NULL, DFmain = 2, DFint = 2, lambda1 = 1,
+  lambda0seq = seq(1, 100, by = 1), a = 1, b = dim(x)[2],
+  nFolds = 10, updateSigma = TRUE, M = 10, error = 0.001,
   forceGroups = c())
 }
 \arguments{

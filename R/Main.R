@@ -1,3 +1,106 @@
+#' Estimate grouped spike and slab lasso regression model along a path
+#'
+#' This function takes in an outcome and covariates, and estimates the 
+#' posterior mode of the spike and slab group lasso penalty beginning at
+#' a small value of lambda0 and continuing on a path until the chosen lambda0
+#'
+#' @param Y              The outcome to be analyzed
+#' @param X              An n by p matrix of covariates
+#' @param lambda1        Prior parameter for the slab component of the prior
+#' @param lambda0        Prior parameter for the spike component of the prior
+#' @param lambda0seq     Sequence of lambda0 grids to iterate through
+#' @param groups         A vector of length p denoting which group each covariate is in
+#' @param a              First hyperparameter for the beta prior denoting the prior probability of being in the slab
+#' @param b              Second hyperparameter for the beta prior denoting the prior probability of being in the slab
+#' @param M              Positive number less than p indicating how often to update theta and sigma. There is no
+#'                       need to change this unless trying to optimize computation time
+#' @param forceGroups    A vector containing the indices of any groups you wish to automatically
+#'                       include in the model and not penalize
+#'
+#' @return A list of values containing the regression coefficients, the intercept, the estimate
+#'         of the residual variance (this is simply the marginal variance of Y if UpdateSigma=FALSE),
+#'         An estimate of theta the prior probability of entering into the slab, and the number of 
+#'         iterations it took to converge 
+#'
+#' @export
+#' @examples
+#'
+#' ## Here we generate 200 samples from 100 covariates
+#' n = 200
+#' G = 100
+#' x = mvtnorm::rmvnorm(n, sigma=diag(G))
+#' 
+## Now create matrix that has linear and squared functions
+## of the original covariates. 
+#' 
+#' X = matrix(NA, nrow=n, ncol=G*2)
+#' 
+#' for (g in 1 : G) {
+#'   X[,2*(g-1) + 1] = x[,g]
+#'   X[,2*g] = x[,g]^2
+#' }
+#' 
+#' Y = 200 + x[,1] + x[,2] + 0.6*x[,2]^2 + rnorm(n, sd=1)
+#' 
+#' ## Now fit model for chosen lambda0 and lambda1 values
+#' modSSGL = SSGLpath(Y=Y, X=X, lambda1=.1, lambda0=10, 
+#' groups = rep(1:G, each=2))
+#' 
+#' modSSGL
+
+
+SSGLpath = function(Y, X, lambda1, lambda0,
+                    lambda0seq = seq(lambda1, lambda0, length=20),groups,
+                    a = 1, b = length(unique(groups)),
+                    M = 10, error = 0.001,
+                    forceGroups = c()) {
+  
+  ## Final model
+  betaStart = rep(0, dim(X)[2])
+  updateSigma=FALSE
+  for (nl in 1 : length(lambda0seq)) {
+    lambda0 = lambda0seq[nl]
+    
+    # starting values for lambda0 = lambda1
+    if ( nl == 1) {
+      modSSGL = SSGL(Y=Y, X=X, lambda1=lambda1, lambda0=lambda0, 
+                     groups = groups,
+                     a = 1, b = G,
+                     updateSigma = updateSigma,
+                     M = 10, error = 0.001,
+                     betaStart = betaStart,
+                     theta = 0.5
+      )
+      
+    } else {
+      modSSGL = SSGL(Y=Y, X=X, lambda1=lambda1, lambda0=lambda0, 
+                     groups = groups,
+                     a = 1, b = G,
+                     updateSigma = updateSigma,
+                     M = 10, error = 0.001,
+                     betaStart = betaStart,
+                     sigmasqStart = sigmasqStart)
+      
+    }
+    
+    
+    if (modSSGL$nIter < 100 & modSSGL$converged) {
+      updateSigma = TRUE
+    }
+    
+    betaStart = modSSGL$betaStart
+    sigmasqStart = modSSGL$sigmasqStart
+    
+  }
+  
+  l = list(beta = modSSGL$beta, theta=modSSGL$theta,
+           sigmasq=modSSGL$sigmasq, intercept=modSSGL$intercept)
+  
+  return(l)
+}
+
+
+
 #' Estimate grouped spike and slab lasso regression model
 #'
 #' This function takes in an outcome and covariates, and estimates the 
@@ -15,6 +118,8 @@
 #'                       need to change this unless trying to optimize computation time
 #' @param betaStart      Starting values for beta vector. There is no need to change this unless for some specific reason
 #' @param sigmaStart     Starting value for sigma. There is no need to change this unless for some specific reason
+#' @param theta          Value of the sparsity parameter theta. There is no need to select a value for this parameter unless the 
+#'                       sparsity is known a priori. If left blank, the function will update theta automatically. 
 #' @param forceGroups    A vector containing the indices of any groups you wish to automatically
 #'                       include in the model and not penalize
 #'
@@ -55,57 +160,118 @@ SSGL = function(Y, X, lambda1, lambda0, groups,
                 updateSigma = TRUE,
                 M = 10, error = 0.001,
                 betaStart = rep(0, dim(X)[2]),
-                sigmasqStart = as.numeric(var(Y)),
+                sigmasqStart,
+                theta,
                 forceGroups = c()) {
-  
   
   ## Number of groups and covariates overall
   G = length(unique(groups))
   p = length(groups)
   n = length(Y)
   
-  ## Need to standardize them here
-  means = apply(X, 2, mean)
-  sds = apply(X, 2, sd)
-  for (j in 1 : p) {
-    X[,j] = (X[,j] - means[j]) / (sds[j]*sqrt(n-1))
+  
+  # get initial value for sigma
+  df <- 3
+  sigquant <- 0.9
+  sigest <- sd(Y)
+  qchi <- qchisq(1 - sigquant, df)
+  ncp <- sigest^2 * qchi / df
+  min_sigma2 <- sigest^2 / n
+  
+  if (missing(sigmasqStart)) {
+    sigmasqStart <- sqrt(df * ncp / (df + 2))
   }
+  
+  Xstar = matrix(NA, dim(X)[1], dim(X)[2])
+  for (j in 1 : dim(X)[2]) {
+    Xstar[,j] = (X[,j] - mean(X[,j]))
+  }
+  
+  ## store orthonormalized design matrix
+  Xtilde = matrix(NA, dim(X)[1], dim(X)[2])
+  
+  ## store relevant matrices from SVD within each group
+  Qmat = list()
+  Dvec = list()
+  
+  ## create orthonormal matrix
+  for (g in 1 : G) {
+    active = which(groups == g)
+    
+    if (length(active) == 1) {
+      Xtilde[,active] = sqrt(dim(Xstar)[1]) * (Xstar[,active] / sqrt(sum(Xstar[,active]^2)))
+      Qmat[[g]] = NULL
+      Dvec[[g]] = NULL
+    } else {
+      
+      tempX = Xstar[,active]
+      SVD = svd((1/n) * t(tempX) %*% tempX)
+      Qmat[[g]] = SVD$u
+      Dvec[[g]] = SVD$d
+      
+      Xtilde[,active] = Xstar[,active] %*% Qmat[[g]] %*% diag(1/sqrt(Dvec[[g]]))
+    }
+  }
+  
+  converged=TRUE
   
   ## Initialize values
   sigmasq = sigmasqStart
   beta = betaStart
-  intercept = mean(Y - X %*% beta)
+  intercept = mean(Y - Xtilde %*% beta)
   Z = 1*((1:G) %in% unique(groups[which(beta != 0)]))
-  theta = (a + sum(Z)) / (a + b + G)
+  if (missing(theta)) {
+    theta = (a + sum(Z))/(a + b + G)
+  }
   counter = 0
   diff = 10*error
   
   counter = 0
   
-  while(diff > error & counter < 500) {
+  lambda0_base = lambda0
+  
+  while(diff > error & counter < 300) {
+    
     ## Store an old beta so we can check for convergence at the end
     betaOld = beta
     
-    ## First update intercept
-    intercept = mean(Y - X %*% beta)
-    
     ## Now update each group of parameters, beta_G
     for (g in 1 : G) {
+      
+      ## First update intercept
+      active2 = which(beta != 0)
+      if (length(active2) == 0) {
+        intercept = mean(Y)
+      } else if (length(active2) == 1) {
+        intercept = mean(Y - Xtilde[,active2]*beta[active2])
+      } else {
+        intercept = mean(Y - Xtilde[,active2] %*% beta[active2]) 
+      }
+      
       ## which parameters refer to this group
       active = which(groups == g)
       m = length(active)
+      lambda0 = sqrt(m) * lambda0_base
       
       if (g %in% forceGroups) {
-        yResid = Y - intercept - X[,-active] %*% as.matrix(beta[-active])
-        beta[active] = solve(t(X[,active]) %*% X[,active]) %*% t(X[,active]) %*% yResid
+        active2 = which(beta != 0 & !1:length(beta) %in% active)
+        
+        if (length(active2) == 0) {
+          yResid = Y - intercept
+        } else if (length(active2) == 1) {
+          yResid = Y - intercept - Xtilde[,active2] * beta[active2]
+        } else {
+          yResid = Y - intercept - Xtilde[,active2] %*% as.matrix(beta[active2])
+        }
+        beta[active] = solve(t(Xtilde[,active]) %*% Xtilde[,active]) %*% t(Xtilde[,active]) %*% yResid
       } else {
         
         ## Calculate delta for this size of a group
-        gf = gFunc(beta = beta[active], lambda1 = lambda1,
-                   lambda0 = lambda0, theta = theta, sigmasq = sigmasq)
+        gf = gFunc(beta = rep(0, length(active)), lambda1 = lambda1,
+                   lambda0 = lambda0, theta = theta, sigmasq = sigmasq, n=n)
         if (gf > 0) {
-          delta =  sqrt(2*sigmasq*log(1/pStar(beta = rep(0,m), lambda1=lambda1,
-                                              lambda0=lambda0, theta=theta))) +
+          delta =  sqrt(2*n*sigmasq*log(1/pStar(beta = rep(0,m), lambda1=lambda1,
+                                                lambda0=lambda0, theta=theta))) +
             sigmasq*lambda1
         } else {
           delta = sigmasq*lambdaStar(beta = rep(0,m), lambda1=lambda1,
@@ -113,58 +279,89 @@ SSGL = function(Y, X, lambda1, lambda0, groups,
         }
         
         ## Calculate necessary quantities
-        zg = t(X[,active]) %*% (Y - intercept - X[,-active] %*% as.matrix(beta[-active]))
-        norm_zg = sum(zg^2)
+        
+        active2 = which(beta != 0 & !1:length(beta) %in% active)
+        
+        if (length(active2) == 0) {
+          zg = t(Xtilde[,active]) %*% (Y - intercept)
+        } else if (length(active2) == 1) {
+          zg = t(Xtilde[,active]) %*% (Y - intercept - Xtilde[,active2] * beta[active2])
+        } else {
+          zg = t(Xtilde[,active]) %*% (Y - intercept - Xtilde[,active2] %*% as.matrix(beta[active2]))
+        }
+        
+        norm_zg = sqrt(sum(zg^2))
         tempLambda = lambdaStar(beta = beta[active], lambda1 = lambda1,
                                 lambda0 = lambda0, theta = theta)
         
         ## Update beta
-        shrinkageTerm = (1 - sigmasq*lambdaStar(beta = beta[active], lambda1 = lambda1,
-                                                lambda0 = lambda0, theta = theta)/norm_zg)
+        shrinkageTerm = (1/n) * (1 - sigmasq*lambdaStar(beta = beta[active], lambda1 = lambda1,
+                                                        lambda0 = lambda0, theta = theta)/norm_zg)
         shrinkageTerm = shrinkageTerm*(1*(shrinkageTerm > 0))
-        beta[active] = shrinkageTerm*zg*(1*(norm_zg > delta))
+        beta[active] = as.numeric(shrinkageTerm)*zg*as.numeric((1*(norm_zg > delta)))
       }
       
       
       ## Update Z
       Z[g] = 1*(any(beta[active] != 0))
       
-      diff = sum((beta - betaOld)^2)
+      diff = sqrt(sum((beta - betaOld)^2))
       
       if (g %% M == 0) {
         ## Update theta
         if (length(forceGroups) == 0) {
-          theta = (a + sum(Z)) / (a + b + sum(Z)) 
+          theta = (a + sum(Z)) / (a + b + G) 
         } else {
-          theta = (a + sum(Z[-forceGroups])) / (a + b + sum(Z[-forceGroups])) 
+          theta = (a + sum(Z[-forceGroups])) / (a + b + G - length(forceGroups)) 
         }
         
         ## Update sigmasq
         if (updateSigma) {
-          sigmasq = sum((Y - X %*% beta - intercept)^2) / (n + 2)
-          ## TODO do we need this? This avoids estimating sigma when it's too small
-          ## and starts over the algorithm
-          if (sigmasq < .00001*var(Y) | counter > 150) {
-            sigmasq = var(Y)
-            updateSigma = FALSE
-            beta = rep(0, p)
-            intercept = mean(Y)
-            theta = 0.1
-            diff=10*error
-            Z = rep(0, G)
+          active2 = which(beta != 0)
+          if (length(active2) == 0) {
+            sigmasq = sum((Y - intercept)^2) / (n + 2)
+          } else if (length(active2) == 1) {
+            sigmasq = sum((Y - Xtilde[,active2] * beta[active2] - intercept)^2) / (n + 2)
+          } else {
+            sigmasq = sum((Y - Xtilde[,active2] %*% as.matrix(beta[active2]) - intercept)^2) / (n + 2)
           }
         }
       }
     }
     
     ## Check to make sure algorithm doesn't explode for values of lambda0 too small
-    tempSigSq = sum((Y - X %*% beta - intercept)^2) / (n + 2)
-    if (tempSigSq < .00001*var(Y) | tempSigSq > 10000*var(Y)) {
-      print(paste("Lambda0 = ", lambda0, " and algorithm is diverging. Increase lambda0"))
-      sigmasq = var(Y)
-      beta = rep(0, dim(X)[2])
-      updateSigma = FALSE
+    active2 = which(beta != 0)
+    if (length(active2) == 0) {
+      tempSigSq = sum((Y - intercept)^2) / (n + 2)
+    } else if (length(active2) == 1) {
+      tempSigSq = sum((Y - Xtilde[,active2] * beta[active2] - intercept)^2) / (n + 2)
+    } else {
+      tempSigSq = sum((Y - Xtilde[,active2] %*% as.matrix(beta[active2]) - intercept)^2) / (n + 2)
+    }
+    
+    if (updateSigma==FALSE & (tempSigSq < min_sigma2 | tempSigSq > 100*var(Y))) {
+      print("Algorithm diverging. Increase lambda0")
+      print(paste("lambda0 =", lambda0))
+      sigmasq = sigmasqStart
+      betaStart = rep(0, dim(Xtilde)[2])
+      converged = FALSE
       diff = 0
+    }
+    
+    if (updateSigma==TRUE & (tempSigSq < min_sigma2 | tempSigSq > 100*var(Y))) {
+      sigmasq = sigmasqStart
+      beta = betaStart
+      updateSigma = FALSE
+      diff = 10*error
+      counter = 0
+    }
+    
+    if (sum(beta != 0) >= min(n, p)) {
+      print("Beta is saturated. Increase lambda0")
+      sigmasq = sigmasqStart
+      betaStart = rep(0, dim(Xtilde)[2])
+      converged = F
+      break
     }
     
     counter = counter + 1
@@ -172,15 +369,41 @@ SSGL = function(Y, X, lambda1, lambda0, groups,
   }
   
   ## need to re-standardize the variables
-  betaSD = beta
-  interceptSD = intercept
-  for (j in 1 : p) {
-    interceptSD = interceptSD - (beta[j]*means[j]) / (sds[j]*sqrt(n-1))
-    betaSD[j] = beta[j] / (sds[j]*sqrt(n-1))
+  betaSD = rep(NA, length(beta))
+  for (g in 1 : G) {
+    active = which(groups == g)
+    if (length(active) == 1) {
+      betaSD[active] = beta[active] * (sqrt(dim(Xstar)[1]) / sqrt(sum(Xstar[,active]^2)))
+    } else {
+      betaSD[active] = (Qmat[[g]] %*% diag(1/sqrt(Dvec[[g]])) %*% beta[active]) 
+    }
   }
   
-  l = list(beta = betaSD, theta=theta, sigmasq=sigmasq, intercept=interceptSD, 
-           nIter = counter)
+  ## Update new intercept
+  interceptSD = mean(Y - X %*% betaSD)
+  
+  ## update the starting value for next iteration only if model converged
+  if (converged == TRUE) {
+    betaStart = beta
+    if (updateSigma) {
+      sigmasqStart = sigmasq
+    }
+  }
+  
+  
+  ## estimate sigma regardless of convergence
+  active2 = which(betaSD != 0)
+  if (length(active2) == 0) {
+    sigmasq = sum((Y - interceptSD)^2) / (n + 2)
+  } else if (length(active2) == 1) {
+    sigmasq = sum((Y - X[,active2] * betaSD[active2] - interceptSD)^2) / (n + 2)
+  } else {
+    sigmasq = sum((Y - X[,active2] %*% as.matrix(betaSD[active2]) - interceptSD)^2) / (n + 2)
+  }
+  
+  l = list(beta = betaSD, betaStart = betaStart, theta=theta, sigmasqStart = sigmasqStart,
+           sigmasq=sigmasq, intercept=interceptSD, nIter = counter,
+           converged = converged)
   
   return(l)
 }
@@ -200,7 +423,6 @@ SSGL = function(Y, X, lambda1, lambda0, groups,
 #' @param groups         A vector of length p denoting which group each covariate is in
 #' @param a              First hyperparameter for the beta prior denoting the prior probability of being in the slab
 #' @param b              Second hyperparameter for the beta prior denoting the prior probability of being in the slab
-#' @param UpdateSigma    True or False indicating whether to estimate the residual variance
 #' @param M              Positive number less than p indicating how often to update theta and sigma. There is no
 #'                       need to change this unless trying to optimize computation time
 #' @param forceGroups    A vector containing the indices of any groups you wish to automatically
@@ -232,7 +454,7 @@ SSGL = function(Y, X, lambda1, lambda0, groups,
 #' 
 #' ## Now find the best lambda0 using cross-validation
 #' modSSGLcv = SSGLcv(Y=Y, X=X, lambda1=.1, 
-#' lambda0seq = seq(4,20, by=2),
+#' lambda0seq = seq(1,100, by=2),
 #' groups = rep(1:G, each=2),
 #' nFolds = 5)
 #' 
@@ -241,10 +463,8 @@ SSGL = function(Y, X, lambda1, lambda0, groups,
 #' 
 #' modSSGL
 
-
-SSGLcv = function(Y, X, lambda1, lambda0seq = seq(1, 25, by=1), 
-                  groups, a = 1, b = length(unique(groups)),
-                  nFolds = 5, updateSigma = TRUE,
+SSGLcv = function(Y, X, lambda1, lambda0seq = seq(1, 100, by=1), 
+                  groups, a = 1, b = length(unique(groups)), nFolds = 5,
                   M = 10, error = 0.001, forceGroups = c()) {
   
   NL = length(lambda0seq)
@@ -270,31 +490,50 @@ SSGLcv = function(Y, X, lambda1, lambda0seq = seq(1, 25, by=1),
     Xtest = X[ws,]
     Ytest = Y[ws]
     
-    for (j in 1 : dim(X)[2]) {
-      cmean = mean(Xtrain[,j])
-      csd = sd(Xtrain[,j])
-      
-      Xtrain[,j] = (Xtrain[,j] - cmean) / (csd * sqrt(ntrain-1))
-      Xtest[,j] = (Xtest[,j] - cmean) / (csd * sqrt(ntrain-1))
-    }
+    # for (j in 1 : dim(X)[2]) {
+    #   cmean = mean(Xtrain[,j])
+    #   csd = sd(Xtrain[,j])
+    # 
+    #   Xtrain[,j] = (Xtrain[,j] - cmean)# / csd
+    #   Xtest[,j] = (Xtest[,j] - cmean)# / csd
+    # }
     
-    betaStart = rep(0, dim(Xtrain)[2])
     sigmasqStart = var(Ytrain)
+    betaStart = rep(0, dim(X)[2])
+    updateSigma=FALSE
     
     ## Loop through the different lambda0 values
     for (nl in 1 : NL) {
       lambda0 = lambda0seq[nl]
-      modSSGL = SSGL(Y=Ytrain, X=Xtrain, lambda1=lambda1, lambda0=lambda0, 
-                     groups = groups,
-                     a = a, b = b,
-                     updateSigma = updateSigma,
-                     M = M, error = error,
-                     betaStart = betaStart,
-                     sigmasqStart = sigmasqStart,
-                     forceGroups = forceGroups)
       
-      betaStart = modSSGL$beta
-      sigmasqStart = modSSGL$sigmasq
+      # starting values for lambda0 = lambda1
+      if ( nl == 1) {
+        modSSGL = SSGL(Y=Ytrain, X=Xtrain, lambda1=lambda1, lambda0=lambda0, 
+                       groups = groups,
+                       a = 1, b = 1,
+                       updateSigma = updateSigma,
+                       M = 10, error = 0.001,
+                       betaStart = betaStart,
+                       theta = 0.5)
+        
+      } else {
+        modSSGL = SSGL(Y=Ytrain, X=Xtrain, lambda1=lambda1, lambda0=lambda0, 
+                       groups = groups,
+                       a = 1, b = 1,
+                       updateSigma = updateSigma,
+                       M = 10, error = 0.001,
+                       betaStart = betaStart,
+                       sigmasqStart = sigmasqStart)
+        
+      }
+      
+      
+      if (modSSGL$nIter < 100 & modSSGL$converged) {
+        updateSigma = TRUE
+      }
+      
+      betaStart = modSSGL$betaStart
+      sigmasqStart = modSSGL$sigmasqStart
       
       yEst = modSSGL$intercept + Xtest %*% modSSGL$beta
       
@@ -316,6 +555,7 @@ SSGLcv = function(Y, X, lambda1, lambda0seq = seq(1, 25, by=1),
   
   return(l)
 }
+
 
 
 
@@ -379,10 +619,10 @@ SSGLcv = function(Y, X, lambda1, lambda0seq = seq(1, 25, by=1),
 #' legend("top", c("Estimated", "Truth"),col=1:2, pch=1)
 
 
-SSGLspr = function(Y, x, xnew = NULL, DF=2, lambda1 = 0.1, 
-                   lambda0seq = seq(1, 25, by=1), 
+SSGLspr = function(Y, x, xnew = NULL, DF=2, lambda1 = 1, 
+                   lambda0seq = seq(1, 100, by=1), 
                    a = 1, b = dim(x)[2],
-                   nFolds = 5, updateSigma = TRUE,
+                   nFolds = 10, updateSigma = TRUE,
                    M = 10, error = 0.001, forceGroups = c()) {
   
   if (is.null(xnew) == FALSE) {
@@ -425,15 +665,46 @@ SSGLspr = function(Y, x, xnew = NULL, DF=2, lambda1 = 0.1,
                        lambda0seq = lambda0seq,
                        groups = rep(1:G, each=mg),
                        a = a, b = b, nFolds = nFolds,
-                       updateSigma = updateSigma,
                        M = M, error = error)
     
     ## Final model
-    modSSGL = SSGL(Y=Y, X=X, lambda1=lambda1, lambda0=modSSGLcv$lambda0, 
-                   groups = rep(1:G, each=mg),
-                   a = a, b = b,
-                   updateSigma = updateSigma,
-                   M = M, error = error)
+    betaStart = rep(0, dim(X)[2])
+    updateSigma=FALSE
+    groups = rep(1:G, each=mg)
+    for (nl in 1 : which.min(modSSGLcv$CVerror)) {
+      lambda0 = lambda0seq[nl]
+      
+      # starting values for lambda0 = lambda1
+      if ( nl == 1) {
+        modSSGL = SSGL(Y=Y, X=X, lambda1=lambda1, lambda0=lambda0, 
+                       groups = groups,
+                       a = 1, b = G,
+                       updateSigma = updateSigma,
+                       M = 10, error = 0.001,
+                       betaStart = betaStart,
+                       theta = 0.5
+        )
+        
+      } else {
+        modSSGL = SSGL(Y=Y, X=X, lambda1=lambda1, lambda0=lambda0, 
+                       groups = groups,
+                       a = 1, b = G,
+                       updateSigma = updateSigma,
+                       M = 10, error = 0.001,
+                       betaStart = betaStart,
+                       sigmasqStart = sigmasqStart)
+        
+      }
+      
+      
+      if (modSSGL$nIter < 100 & modSSGL$converged) {
+        updateSigma = TRUE
+      }
+      
+      betaStart = modSSGL$betaStart
+      sigmasqStart = modSSGL$sigmasqStart
+      
+    }
     
     predY = modSSGL$intercept + X %*% modSSGL$beta
     predYnew = modSSGL$intercept + Xnew %*% modSSGL$beta
@@ -491,15 +762,46 @@ SSGLspr = function(Y, x, xnew = NULL, DF=2, lambda1 = 0.1,
                        lambda0seq = lambda0seq,
                        groups = rep(1:G, each=mg),
                        a = a, b = b, nFolds = nFolds,
-                       updateSigma = updateSigma,
                        M = M, error = error)
     
     ## Final model
-    modSSGL = SSGL(Y=Y, X=X, lambda1=lambda1, lambda0=modSSGLcv$lambda0, 
-                   groups = rep(1:G, each=mg),
-                   a = a, b = b,
-                   updateSigma = updateSigma,
-                   M = M, error = error)
+    betaStart = rep(0, dim(X)[2])
+    updateSigma=FALSE
+    groups = rep(1:G, each=mg)
+    for (nl in 1 : which.min(modSSGLcv$CVerror)) {
+      lambda0 = lambda0seq[nl]
+      
+      # starting values for lambda0 = lambda1
+      if ( nl == 1) {
+        modSSGL = SSGL(Y=Y, X=X, lambda1=lambda1, lambda0=lambda0, 
+                       groups = groups,
+                       a = 1, b = G,
+                       updateSigma = updateSigma,
+                       M = 10, error = 0.001,
+                       betaStart = betaStart,
+                       theta = 0.5
+        )
+        
+      } else {
+        modSSGL = SSGL(Y=Y, X=X, lambda1=lambda1, lambda0=lambda0, 
+                       groups = groups,
+                       a = 1, b = G,
+                       updateSigma = updateSigma,
+                       M = 10, error = 0.001,
+                       betaStart = betaStart,
+                       sigmasqStart = sigmasqStart)
+        
+      }
+      
+      
+      if (modSSGL$nIter < 100 & modSSGL$converged) {
+        updateSigma = TRUE
+      }
+      
+      betaStart = modSSGL$betaStart
+      sigmasqStart = modSSGL$sigmasqStart
+      
+    }
     
     predY = modSSGL$intercept + X %*% modSSGL$beta
     nonzero = 1*(modSSGL$beta[(1:G)*DF] != 0)
@@ -577,10 +879,10 @@ SSGLspr = function(Y, x, xnew = NULL, DF=2, lambda1 = 0.1,
 
 
 SSGLint = function(Y, x, xnew = NULL, DFmain=2, DFint = 2,
-                   lambda1 = 0.1, 
-                   lambda0seq = seq(1, 25, by=1), 
+                   lambda1 = 1, 
+                   lambda0seq = seq(1, 100, by=1), 
                    a = 1, b = dim(x)[2],
-                   nFolds = 5, updateSigma = TRUE,
+                   nFolds = 10, updateSigma = TRUE,
                    M = 10, error = 0.001, forceGroups = c()) {
   
   if (is.null(xnew) == FALSE) {
@@ -659,15 +961,45 @@ SSGLint = function(Y, x, xnew = NULL, DFmain=2, DFint = 2,
                        lambda0seq = lambda0seq,
                        groups = groups,
                        a = a, b = b, nFolds = nFolds,
-                       updateSigma = updateSigma,
                        M = M, error = error)
     
     ## Final model
-    modSSGL = SSGL(Y=Y, X=X, lambda1=lambda1, lambda0=modSSGLcv$lambda0, 
-                   groups = groups,
-                   a = a, b = b,
-                   updateSigma = updateSigma,
-                   M = M, error = error)
+    betaStart = rep(0, dim(X)[2])
+    updateSigma=FALSE
+    for (nl in 1 : which.min(modSSGLcv$CVerror)) {
+      lambda0 = lambda0seq[nl]
+      
+      # starting values for lambda0 = lambda1
+      if ( nl == 1) {
+        modSSGL = SSGL(Y=Y, X=X, lambda1=lambda1, lambda0=lambda0, 
+                       groups = groups,
+                       a = 1, b = G,
+                       updateSigma = updateSigma,
+                       M = 10, error = 0.001,
+                       betaStart = betaStart,
+                       theta = 0.5
+        )
+        
+      } else {
+        modSSGL = SSGL(Y=Y, X=X, lambda1=lambda1, lambda0=lambda0, 
+                       groups = groups,
+                       a = 1, b = G,
+                       updateSigma = updateSigma,
+                       M = 10, error = 0.001,
+                       betaStart = betaStart,
+                       sigmasqStart = sigmasqStart)
+        
+      }
+      
+      
+      if (modSSGL$nIter < 100 & modSSGL$converged) {
+        updateSigma = TRUE
+      }
+      
+      betaStart = modSSGL$betaStart
+      sigmasqStart = modSSGL$sigmasqStart
+      
+    }
     
     predY = modSSGL$intercept + X %*% modSSGL$beta
     predYnew = modSSGL$intercept + Xnew %*% modSSGL$beta
@@ -745,15 +1077,45 @@ SSGLint = function(Y, x, xnew = NULL, DFmain=2, DFint = 2,
                        lambda0seq = lambda0seq,
                        groups = groups,
                        a = a, b = b, nFolds = nFolds,
-                       updateSigma = updateSigma,
                        M = M, error = error)
     
     ## Final model
-    modSSGL = SSGL(Y=Y, X=X, lambda1=lambda1, lambda0=modSSGLcv$lambda0, 
-                   groups = groups,
-                   a = a, b = b,
-                   updateSigma = updateSigma,
-                   M = M, error = error)
+    betaStart = rep(0, dim(X)[2])
+    updateSigma=FALSE
+    for (nl in 1 : which.min(modSSGLcv$CVerror)) {
+      lambda0 = lambda0seq[nl]
+      
+      # starting values for lambda0 = lambda1
+      if ( nl == 1) {
+        modSSGL = SSGL(Y=Y, X=X, lambda1=lambda1, lambda0=lambda0, 
+                       groups = groups,
+                       a = 1, b = G,
+                       updateSigma = updateSigma,
+                       M = 10, error = 0.001,
+                       betaStart = betaStart,
+                       theta = 0.5
+        )
+        
+      } else {
+        modSSGL = SSGL(Y=Y, X=X, lambda1=lambda1, lambda0=lambda0, 
+                       groups = groups,
+                       a = 1, b = G,
+                       updateSigma = updateSigma,
+                       M = 10, error = 0.001,
+                       betaStart = betaStart,
+                       sigmasqStart = sigmasqStart)
+        
+      }
+      
+      
+      if (modSSGL$nIter < 100 & modSSGL$converged) {
+        updateSigma = TRUE
+      }
+      
+      betaStart = modSSGL$betaStart
+      sigmasqStart = modSSGL$sigmasqStart
+      
+    }
     
     predY = modSSGL$intercept + X %*% modSSGL$beta
     predYnew = NULL

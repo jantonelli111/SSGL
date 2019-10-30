@@ -4,9 +4,9 @@
 \alias{SSGLcv}
 \title{Find optimal lambda0 value using cross validation}
 \usage{
-SSGLcv(Y, X, lambda1, lambda0seq = seq(1, 25, by = 1), groups, a = 1,
-  b = length(unique(groups)), nFolds = 5, updateSigma = TRUE,
-  M = 10, error = 0.001, forceGroups = c())
+SSGLcv(Y, X, lambda1, lambda0seq = seq(1, 100, by = 1), groups, a = 1,
+  b = length(unique(groups)), nFolds = 5, M = 10, error = 0.001,
+  forceGroups = c())
 }
 \arguments{
 \item{Y}{The outcome to be analyzed}
@@ -30,8 +30,6 @@ need to change this unless trying to optimize computation time}
 
 \item{forceGroups}{A vector containing the indices of any groups you wish to automatically
 include in the model and not penalize}
-
-\item{UpdateSigma}{True or False indicating whether to estimate the residual variance}
 }
 \value{
 A list of values containing the lambda0 that minimizes the cross-validated error, the vector
@@ -60,7 +58,7 @@ Y = x[,1] + x[,2] + 0.6*x[,2]^2 + rnorm(n, sd=1)
 
 ## Now find the best lambda0 using cross-validation
 modSSGLcv = SSGLcv(Y=Y, X=X, lambda1=.1, 
-lambda0seq = seq(4,20, by=2),
+lambda0seq = seq(1,100, by=2),
 groups = rep(1:G, each=2),
 nFolds = 5)
 

@@ -3,4 +3,5 @@
 export(SSGL)
 export(SSGLcv)
 export(SSGLint)
+export(SSGLpath)
 export(SSGLspr)
