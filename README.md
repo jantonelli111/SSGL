@@ -97,7 +97,7 @@ In our experience, lambda0 sequences should go from around 1 to 100. Now one can
 And lastly run the model with the chosen lambda0 value:
 
 ```{r, eval=FALSE}
-modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=modSSGLcv$lambda0, 
+modSSGL = SSGLpath(Y=Y, X=X, lambda1=.1, lambda0=modSSGLcv$lambda0, 
                groups = rep(1:G, each=2))
 ```
 
