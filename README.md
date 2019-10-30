@@ -88,11 +88,11 @@ modSSGLcv = SSGLcv(Y=Y, X=X, lambda1=1,
                    groups = rep(1:G, each=2),
                    nFolds = 10)
 ```
-![Alt text](images/CV1.png)
+![Alt text](images/CVpart1.png)
 
 In our experience, lambda0 sequences should go from around 1 to 100. Now one can check what the chosen value of lambda0 is:
 
-![Alt text](images/CV2.png)
+![Alt text](images/CVpart2.png)
 
 And lastly run the model with the chosen lambda0 value:
 
