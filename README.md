@@ -15,8 +15,9 @@ library(SSGL)
 
 There are four main functions in the package, which we will show how to use below. These functions and their corresponding purposes are as follows:
 
-SSGLpath - The standard function for using the spike and slab group lasso with a chosen lambda0. This estimates the
-           posterior mode for a ladder of lambda0 values that increase up until the chosen lambda0 value
+SSGL - The function which calculates the posterior mode of the SSGL model for a chosen lambda0
+
+SSGLpath - The standard function for using the spike and slab group lasso with a chosen lambda0. This estimates the posterior mode for a ladder of lambda0 values that increase up until the chosen lambda0 value. We have found that this works slightly better than SSGL for finding the optimal solution, though it takes longer to run.
            
 SSGLcv - The function used to find the value of lambda0 to use  
 
@@ -24,7 +25,7 @@ SSGLspr - A function to use spike and slab group lasso for semiparametric regres
 
 SSGLint - A function to use spike and slab group lasso for nonlinear interaction detection  
 
-# Using the SSGLpath and SSGLcv functions
+# Using the SSGL, SSGLpath, and SSGLcv functions
 
 Here, we will simulate a simple example to show how the software works. First we will show how the function works for a chosen value of lambda0
 
