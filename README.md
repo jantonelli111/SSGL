@@ -13,7 +13,14 @@ install_github(repo = "jantonelli111/SSGL")
 library(SSGL)
 ```
 
-# How to use the software
+There are four main functions in the package, which we will show how to use below. These functions and their corresponding purposes are as follows:
+
+SSGL - The standard function for using the spike and slab group lasso   
+SSGLcv - The function used to find the value of lambda0 to use  
+SSGLspr - A function to use spike and slab group lasso for semiparametric regression using sparse additive linear models  
+SSGLint - A function to use spike and slab group lasso for nonlinear interaction detection  
+
+# Using the SSGL and SSGLcv functions
 
 Here, we will simulate a simple example to show how the software works. First we will show how the function works for a chosen value of lambda0
 
@@ -78,9 +85,9 @@ modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=modSSGLcv$lambda0,
                groups = rep(1:G, each=2))
 ```
 
-# Use in sparse generalized additive models (GAMs)
+# Using SSGLspr for sparse additive models
 
-Now we will show how the SSGL procedure can be used to model sparse additive generalized models. We will use roughly the same functions as seen in the manuscript of the paper. We will model the effect of each covariate using 2 degree of freedom splines. First, we simulate G covariates, and then we create new design matrices using natural splines.
+Now we will show how the SSGL procedure can be used to model sparse additive models. We will use roughly the same functions as seen in the manuscript of the paper. We will model the effect of each covariate using 2 degree of freedom splines. First, we simulate G covariates, and then we create new design matrices using natural splines.
 
 ```{r, eval=FALSE}
 library(splines)
@@ -93,43 +100,16 @@ TrueF = function(x) {
 n = 200
 G = 100
 
-## Generating training data
 x = matrix(runif(G*n), nrow=n)
+xnew = matrix(runif(G*n2), nrow=n2)
 Y = TrueF(x) + rnorm(n, sd=1)
-
-## degrees of freedom of the splines
-mg = 2
-
-X = matrix(NA, nrow=n, ncol=G*mg)
-
-## create design matrix with 2 degree of freedom splines
-## ensuring that the variables within each group are orthogonal
-for (g in 1 : G) {
-  splineTemp = ns(x[,g], df=mg)
-  X[,mg*(g-1) + 1] = splineTemp[,1]
-  for (m in 2 : mg) {
-    tempY = splineTemp[,m]
-    tempX = X[,(mg*(g-1) + 1):(mg*(g-1) + m - 1)]
-    modX = lm(tempY ~ tempX)
-    X[,mg*(g-1) + m] = modX$residuals
-  }
-}
+Ynew = TrueF(xnew) + rnorm(n2, sd=1)
 ```
 
-And now we can build our SSGL model, first using cross-validation to find the appropriate tuning parameter value.
+And now we can build our SSGL model. Note that the modSSGLspr function already implements cross-validation, so nothing further is required.
 
 ```{r, eval=FALSE}
-lambda0seq = seq(3, 25, by=2)
-
-## Cross validation
-modSSGLcv = SSGLcv(Y=Y, X=X, lambda1=.1, 
-                   lambda0seq = lambda0seq,
-                   groups = rep(1:G, each=mg),
-                   nFolds = 25)
-
-## Final model
-modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=modSSGLcv$lambda0, 
-               groups = rep(1:G, each=mg))
+modSSGLspr = SSGLspr(Y=Y, x=x, xnew = xnew, lambda1=.1, DF=2)
 ```
 
 And finally, we can plot the effect of exposure 1 and exposure 3 on the outcome. 
@@ -138,7 +118,7 @@ And finally, we can plot the effect of exposure 1 and exposure 3 on the outcome.
 par(mfrow=c(1,2), pty='s')
 ## Plot the effect of exposure 1 on the outcome
 ord = order(x[,1])
-Curve = X[ord,1:2] %*% modSSGL$beta[1:2]
+Curve = modSSGLspr$fx[ord,1]
 Truth = 5*sin(pi*x[ord,1])
 plot(x[ord,1], Curve + mean(Truth) - mean(Curve), type='l', lwd=3,
      xlab="Covariate 1", ylab="f(X1)")
@@ -147,7 +127,7 @@ legend("bottom", c("SSGL", "Truth"), lwd=3, lty=1, col=1:2)
 
 ## Plot the effect of exposure 3 on the outcome
 ord = order(x[,3])
-Curve = X[ord,5:6] %*% modSSGL$beta[5:6]
+Curve = modSSGLspr$fx[ord,3]
 Truth = 2.5*(x[ord,3]^2 - 0.5)
 plot(x[ord,3], Curve + mean(Truth) - mean(Curve), type='l', lwd=3,
      xlab="Covariate 3", ylab="f(X3)")
@@ -175,94 +155,16 @@ x = matrix(runif(G*n), nrow=n)
 Y = TrueF(x) + rnorm(n, sd=1)
 ```
 
-And now we need to construct both main effect and interaction design matrices using nonlinear functions from natural splines. First we can start with the main effects:
+And now we can use the SSGLint function to estimate the model with nonlinear interactions. Note that we can specify different numbers of degrees of freedom for the main effect functions and the interaction functions separately:
 
 ```{r, eval=FALSE}
-## Run our approach for 2 degrees of freedom
-
-mg = 2
-
-X = matrix(NA, nrow=n, ncol=(G*mg) + choose(G,2)*(mg^2))
-
-## create main effect component of design matrix
-for (g in 1 : G) {
-  splineTemp = ns(x[,g], df=mg)
-  X[,mg*(g-1) + 1] = splineTemp[,1]
-  for (m in 2 : mg) {
-    tempY = splineTemp[,m]
-    tempX = X[,(mg*(g-1) + 1):(mg*(g-1) + m - 1)]
-    modX = lm(tempY ~ tempX)
-    X[,mg*(g-1) + m] = modX$residuals
-  }
-}
-```
-And now we can move to interaction terms. Note that we are constructing the interaction terms to be orthogonal to the main effect terms so that they only capture information that is orthogonal to the main effects. 
-
-```{r, eval=FALSE}
-## create interaction component of design matrix
-## ensuring that interaction terms are independent
-## of their corresponding main effects
-counter = 1
-for (g1 in 2 : G) {
-  for (g2 in 1 : (g1 - 1)) {
-    splineTemp1 = ns(x[,g1], df=mg)
-    splineTemp2 = ns(x[,g2], df=mg)
-    
-    designX = matrix(NA, n, mg^2)
-    counter2 = 1
-    for (m1 in 1 : mg) {
-      for (m2 in 1 : mg) {
-        tempY = splineTemp1[,m1]*splineTemp2[,m2]
-        tempMod = lm(tempY ~ splineTemp1 + splineTemp2)
-        designX[,counter2] = tempMod$residuals
-        counter2 = counter2 + 1
-      }
-    }
-    
-    X[,((G*mg) + (counter-1)*(mg^2) + 1) : ((G*mg) + counter*(mg^2))] = designX
-    counter = counter + 1
-  }
-} 
-
-groups = c(rep(1:G, each=mg), rep(G + 1:(choose(G,2)), each=mg^2))
-```
-
-Now we can run our model using cross validation to find lambda0.
-
-```{r, eval=FALSE}
-lambda0seq = seq(3, 25, by=2)
-
-## Cross validation
-modSSGLcv = SSGLcv(Y=Y, X=X, lambda1=.1, 
-                   lambda0seq = lambda0seq,
-                   groups = groups,
-                   a = 1, b = G, nFolds = 10,
-                   updateSigma = TRUE,
-                   M = 10, error = 0.0001)
-
-## Final model
-modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=modSSGLcv$lambda0, 
-               groups = groups,
-               a = 1, b = G,
-               updateSigma = TRUE,
-               M = 10, error = 0.0001)
+modSSGLint = SSGLint(Y=Y, x=x, lambda1=.1, DFmain=2, DFint = 2)
 ```
 
 And now we can look at which interaction terms are important
 
 ```{r, eval=FALSE}
-## Find which interaction terms are important
-interactionSave = matrix(NA, G, G)
-
-counter = 1
-for (g1 in 2 : G) {
-  for (g2 in 1 : (g1 - 1)) {
-    interactionSave[g1,g2] = 1*(modSSGL$beta[((G*mg) + (counter-1)*(mg^2) + 1)] != 0)
-    counter = counter + 1
-  }
-}
-
-interactionSave
+modSSGLint$interactions
 
 ```
 
