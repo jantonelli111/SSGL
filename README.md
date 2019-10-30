@@ -15,12 +15,17 @@ library(SSGL)
 
 There are four main functions in the package, which we will show how to use below. These functions and their corresponding purposes are as follows:
 
-SSGL - The standard function for using the spike and slab group lasso   
+SSGL - The function which calculates the posterior mode of the SSGL model for a chosen lambda0
+
+SSGLpath - The standard function for using the spike and slab group lasso with a chosen lambda0. This estimates the posterior mode for a ladder of lambda0 values that increase up until the chosen lambda0 value. We have found that this works slightly better than SSGL for finding the optimal solution, though it takes longer to run.
+           
 SSGLcv - The function used to find the value of lambda0 to use  
-SSGLspr - A function to use spike and slab group lasso for semiparametric regression using sparse additive linear models  
+
+SSGLspr - A function to use spike and slab group lasso for semiparametric regression using sparse additive linear models
+
 SSGLint - A function to use spike and slab group lasso for nonlinear interaction detection  
 
-# Using the SSGL and SSGLcv functions
+# Using the SSGL, SSGLpath, and SSGLcv functions
 
 Here, we will simulate a simple example to show how the software works. First we will show how the function works for a chosen value of lambda0
 
@@ -40,8 +45,8 @@ for (g in 1 : G) {
 Y = 200 + x[,1] + x[,2] + 0.6*x[,2]^2 + rnorm(n, sd=1)
 
 ## Now fit model for chosen lambda0 and lambda1 values
-modSSGL = SSGL(Y=Y, X=X, lambda1=.1, lambda0=10, 
-groups = rep(1:G, each=2))
+modSSGL = SSGL(Y=Y, X=X, lambda1=1, lambda0=50, 
+                   groups = rep(1:G, each=2))
 
 ```
 
@@ -65,16 +70,27 @@ modSSGL$theta
 ```
 ![Alt text](images/theta.png)
 
-So we see that our model has correctly identified the first two covariates (represented in this example by first 4 covariates) as nonzero, while zeroing out the remaining coefficients. This example relied on a well-chosen value of lambda0, which we won't know in general. To solve this, one can use the cross-validation function as below:
+So we see that our model has correctly identified the first two covariates (represented in this example by first 4 covariates) as nonzero, while zeroing out the remaining coefficients. We can also use the SSGLpath function to find this estimate. This will take slightly longer, but we find that it works better in some cases, though in this example it gives the same answer.
+
+```{r, eval=FALSE}
+modSSGL = SSGLpath(Y=Y, X=X, lambda1=1, lambda0=50, 
+               groups = rep(1:G, each=2))
+```
+
+This example relied on a well-chosen value of lambda0, which we won't know in general. To solve this, one can use the cross-validation function as below:
 
 
 ```{r, eval=FALSE}
-modSSGLcv = SSGLcv(Y=Y, X=X, lambda1=.1, lambda0seq = seq(4,20, by=2),
-groups = rep(1:G, each=2), nFolds = 5)
+lambda0seq = seq(1, 100, by=2)
+
+modSSGLcv = SSGLcv(Y=Y, X=X, lambda1=1, 
+                   lambda0seq = lambda0seq,
+                   groups = rep(1:G, each=2),
+                   nFolds = 10)
 ```
 ![Alt text](images/CV1.png)
 
-Notice that you might see a warning message about the algorithm diverging. This tends to happen only for small lambda0 values, and is not a problem unless you see this warning for each lambda0 value in your sequence. In our experience, lambda0 sequences should go from around 1 to 25. Now one can check what the chosen value of lambda0 is:
+In our experience, lambda0 sequences should go from around 1 to 100. Now one can check what the chosen value of lambda0 is:
 
 ![Alt text](images/CV2.png)
 
