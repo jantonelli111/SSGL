@@ -684,8 +684,11 @@ SSGLspr = function(Y, x, xnew = NULL, DF=2, lambda1 = 1,
     betaStart = rep(0, dim(X)[2])
     updateSigma=FALSE
     groups = rep(1:G, each=mg)
+    printWarnings = FALSE
     for (nl in 1 : which.min(modSSGLcv$CVerror)) {
       lambda0 = lambda0seq[nl]
+      
+      if (nl == which.min(modSSGLcv$CVerror)) printWarnings=TRUE
       
       # starting values for lambda0 = lambda1
       if ( nl == 1) {
@@ -695,6 +698,7 @@ SSGLspr = function(Y, x, xnew = NULL, DF=2, lambda1 = 1,
                        updateSigma = updateSigma,
                        M = 10, error = 0.001,
                        betaStart = betaStart,
+                       printWarnings = printWarnings,
                        theta = 0.5
         )
         
@@ -705,6 +709,7 @@ SSGLspr = function(Y, x, xnew = NULL, DF=2, lambda1 = 1,
                        updateSigma = updateSigma,
                        M = 10, error = 0.001,
                        betaStart = betaStart,
+                       printWarnings = printWarnings,
                        sigmasqStart = sigmasqStart)
         
       }
@@ -781,8 +786,11 @@ SSGLspr = function(Y, x, xnew = NULL, DF=2, lambda1 = 1,
     betaStart = rep(0, dim(X)[2])
     updateSigma=FALSE
     groups = rep(1:G, each=mg)
+    printWarnings = FALSE
     for (nl in 1 : which.min(modSSGLcv$CVerror)) {
       lambda0 = lambda0seq[nl]
+      
+      if (nl == which.min(modSSGLcv$CVerror)) printWarnings = TRUE
       
       # starting values for lambda0 = lambda1
       if ( nl == 1) {
@@ -792,6 +800,7 @@ SSGLspr = function(Y, x, xnew = NULL, DF=2, lambda1 = 1,
                        updateSigma = updateSigma,
                        M = 10, error = 0.001,
                        betaStart = betaStart,
+                       printWarnings = printWarnings,
                        theta = 0.5
         )
         
@@ -802,6 +811,7 @@ SSGLspr = function(Y, x, xnew = NULL, DF=2, lambda1 = 1,
                        updateSigma = updateSigma,
                        M = 10, error = 0.001,
                        betaStart = betaStart,
+                       printWarnings = printWarnings,
                        sigmasqStart = sigmasqStart)
         
       }
@@ -979,8 +989,11 @@ SSGLint = function(Y, x, xnew = NULL, DFmain=2, DFint = 2,
     ## Final model
     betaStart = rep(0, dim(X)[2])
     updateSigma=FALSE
+    printWarnings = FALSE
     for (nl in 1 : which.min(modSSGLcv$CVerror)) {
       lambda0 = lambda0seq[nl]
+      
+      if (nl == which.min(modSSGLcv$CVerror)) printWarnings = TRUE
       
       # starting values for lambda0 = lambda1
       if ( nl == 1) {
@@ -990,6 +1003,7 @@ SSGLint = function(Y, x, xnew = NULL, DFmain=2, DFint = 2,
                        updateSigma = updateSigma,
                        M = 10, error = 0.001,
                        betaStart = betaStart,
+                       printWarnings = printWarnings,
                        theta = 0.5
         )
         
@@ -1000,6 +1014,7 @@ SSGLint = function(Y, x, xnew = NULL, DFmain=2, DFint = 2,
                        updateSigma = updateSigma,
                        M = 10, error = 0.001,
                        betaStart = betaStart,
+                       printWarnings = printWarnings,
                        sigmasqStart = sigmasqStart)
         
       }
@@ -1095,8 +1110,11 @@ SSGLint = function(Y, x, xnew = NULL, DFmain=2, DFint = 2,
     ## Final model
     betaStart = rep(0, dim(X)[2])
     updateSigma=FALSE
+    printWarnings = FALSE
     for (nl in 1 : which.min(modSSGLcv$CVerror)) {
       lambda0 = lambda0seq[nl]
+      
+      if (nl == which.min(modSSGLcv$CVerror)) printWarnings = TRUE
       
       # starting values for lambda0 = lambda1
       if ( nl == 1) {
@@ -1106,6 +1124,7 @@ SSGLint = function(Y, x, xnew = NULL, DFmain=2, DFint = 2,
                        updateSigma = updateSigma,
                        M = 10, error = 0.001,
                        betaStart = betaStart,
+                       printWarnings = printWarnings,
                        theta = 0.5
         )
         
@@ -1116,6 +1135,7 @@ SSGLint = function(Y, x, xnew = NULL, DFmain=2, DFint = 2,
                        updateSigma = updateSigma,
                        M = 10, error = 0.001,
                        betaStart = betaStart,
+                       printWarnings = printWarnings,
                        sigmasqStart = sigmasqStart)
         
       }
