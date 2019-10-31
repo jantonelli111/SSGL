@@ -88,22 +88,22 @@ modSSGLcv = SSGLcv(Y=Y, X=X, lambda1=1,
                    groups = rep(1:G, each=2),
                    nFolds = 10)
 ```
-![Alt text](images/CV1.png)
+![Alt text](images/CVpart1.png)
 
 In our experience, lambda0 sequences should go from around 1 to 100. Now one can check what the chosen value of lambda0 is:
 
-![Alt text](images/CV2.png)
+![Alt text](images/CVpart2.png)
 
 And lastly run the model with the chosen lambda0 value:
 
 ```{r, eval=FALSE}
-modSSGL = SSGLpath(Y=Y, X=X, lambda1=.1, lambda0=modSSGLcv$lambda0, 
+modSSGL = SSGLpath(Y=Y, X=X, lambda1=1, lambda0=modSSGLcv$lambda0, 
                groups = rep(1:G, each=2))
 ```
 
 # Using SSGLspr for sparse additive models
 
-Now we will show how the SSGL procedure can be used to model sparse additive models. We will use roughly the same functions as seen in the manuscript of the paper. We will model the effect of each covariate using 2 degree of freedom splines. First, we simulate G covariates, and then we create new design matrices using natural splines.
+Now we will show how the SSGL procedure can be used to model sparse additive models. We will use roughly the same functions as seen in the manuscript of the paper. We will model the effect of each covariate using 2 degree of freedom splines. First, we simulate G covariates, and then we create new design matrices using natural splines. The creation of the design matrices is already done within the SSGLspr function
 
 ```{r, eval=FALSE}
 library(splines)
@@ -114,6 +114,7 @@ TrueF = function(x) {
 }
 
 n = 200
+n2 = 100
 G = 100
 
 x = matrix(runif(G*n), nrow=n)
@@ -122,10 +123,10 @@ Y = TrueF(x) + rnorm(n, sd=1)
 Ynew = TrueF(xnew) + rnorm(n2, sd=1)
 ```
 
-And now we can build our SSGL model. Note that the modSSGLspr function already implements cross-validation, so nothing further is required.
+And now we can build our SSGL model. Note that the SSGLspr function already implements cross-validation, so nothing further is required.
 
 ```{r, eval=FALSE}
-modSSGLspr = SSGLspr(Y=Y, x=x, xnew = xnew, lambda1=.1, DF=2)
+modSSGLspr = SSGLspr(Y=Y, x=x, xnew = xnew, lambda1=1, DF=2)
 ```
 
 And finally, we can plot the effect of exposure 1 and exposure 3 on the outcome. 
