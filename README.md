@@ -175,7 +175,7 @@ Y = TrueF(x) + rnorm(n, sd=1)
 And now we can use the SSGLint function to estimate the model with nonlinear interactions. Note that we can specify different numbers of degrees of freedom for the main effect functions and the interaction functions separately:
 
 ```{r, eval=FALSE}
-modSSGLint = SSGLint(Y=Y, x=x, lambda1=.1, DFmain=2, DFint = 2)
+modSSGLint = SSGLint(Y=Y, x=x, lambda1=1, DFmain=2, DFint = 2)
 ```
 
 And now we can look at which interaction terms are important
@@ -187,4 +187,4 @@ modSSGLint$interactions
 
 ![Alt text](images/Interactions.png)
 
-We see that there is an interaction term between covariate 1 and 2, as well as between covariate 3 and 5.
+We see that the model correctly identifies the interaction terms between covariates 1 and 2, as well as between covariates 3 and 5. The model also incorrectly includes the interaction between covariates 2 and 4 in this instance.
